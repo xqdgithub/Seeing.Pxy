@@ -20,6 +20,7 @@ public sealed class TunnelClientService : BackgroundService
     private readonly ILogger<TunnelClientService> _logger;
 
     private readonly ConcurrentDictionary<string, LocalStreamSession> _streams = new();
+    private readonly ConcurrentDictionary<string, string> _ruleErrors = new();
     private HubConnection? _connection;
     private int _status;
     private string _lastError = string.Empty;
@@ -173,6 +174,7 @@ public sealed class TunnelClientService : BackgroundService
             {
                 _lastError = result.Message ?? string.Join("; ", result.RuleErrors?.Select(e => e.Message) ?? Array.Empty<string>());
                 _logger.LogWarning("注册失败：{Error}", _lastError);
+                UpdateRuleErrors(result.RuleErrors);
                 return false;
             }
 
@@ -186,14 +188,47 @@ public sealed class TunnelClientService : BackgroundService
                 _lastError = string.Empty;
             }
 
+            UpdateRuleErrors(result.RuleErrors);
             return true;
         }
         catch (Exception ex)
         {
             _lastError = ex.Message;
             _logger.LogWarning("注册请求异常：{Message}", ex.Message);
+            UpdateRuleErrors(null);
             return false;
         }
+    }
+
+    private void UpdateRuleErrors(List<RuleError>? ruleErrors)
+    {
+        _ruleErrors.Clear();
+        if (ruleErrors is { Count: > 0 })
+        {
+            foreach (var error in ruleErrors)
+            {
+                _ruleErrors[error.RuleId] = error.Message;
+            }
+        }
+    }
+
+    public IReadOnlyList<RuleStatusView> GetRuleStates()
+    {
+        var config = _configStore.Config;
+        var result = new List<RuleStatusView>(config.Rules.Count);
+        foreach (var rule in config.Rules)
+        {
+            result.Add(new RuleStatusView
+            {
+                Rule = rule,
+                ActiveConnections = rule.Enabled
+                    ? _streams.Values.Count(s => s.RuleId == rule.Id)
+                    : 0,
+                Error = rule.Enabled && _ruleErrors.TryGetValue(rule.Id, out var message) ? message : null,
+            });
+        }
+
+        return result;
     }
 
     private async Task OnNewConnection(string streamId, string localHost, int localPort)
@@ -227,6 +262,7 @@ public sealed class TunnelClientService : BackgroundService
         var session = new LocalStreamSession
         {
             StreamId = streamId,
+            RuleId = FindRuleId(localHost, localPort),
             TcpClient = client,
             Stream = client.GetStream(),
         };
@@ -256,6 +292,16 @@ public sealed class TunnelClientService : BackgroundService
 
     private Task OnCloseStream(string streamId)
         => CloseLocalAsync(streamId, notify: false);
+
+    private string FindRuleId(string localHost, int localPort)
+    {
+        var config = _configStore.Config;
+        var rule = config.Rules.FirstOrDefault(r =>
+            r.Enabled &&
+            r.LocalPort == localPort &&
+            string.Equals(r.LocalHost, localHost, StringComparison.OrdinalIgnoreCase));
+        return rule?.Id ?? string.Empty;
+    }
 
     private async Task PumpLocalAsync(LocalStreamSession session, HubConnection connection)
     {

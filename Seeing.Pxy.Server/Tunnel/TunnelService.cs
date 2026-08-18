@@ -1,9 +1,9 @@
 using System.Buffers;
 using System.Collections.Concurrent;
 using System.Net.Sockets;
-using System.Security.Cryptography.X509Certificates;
 using Microsoft.AspNetCore.SignalR;
 using Seeing.Pxy.Server.Config;
+using Seeing.Pxy.Server.Security;
 using Seeing.Pxy.Shared;
 
 namespace Seeing.Pxy.Server.Tunnel;
@@ -13,6 +13,7 @@ public sealed class TunnelService
     private readonly ILogger<TunnelService> _logger;
     private readonly IHubContext<TunnelHub, ITunnelClient> _hub;
     private readonly ServerConfigStore _configStore;
+    private readonly ServerCertificateProvider _certificateProvider;
     private readonly TcpPortManager _ports;
 
     private readonly ConcurrentDictionary<string, ClientSession> _clients = new();
@@ -23,11 +24,13 @@ public sealed class TunnelService
         ILogger<TunnelService> logger,
         IHubContext<TunnelHub, ITunnelClient> hub,
         ServerConfigStore configStore,
+        ServerCertificateProvider certificateProvider,
         TcpPortManager ports)
     {
         _logger = logger;
         _hub = hub;
         _configStore = configStore;
+        _certificateProvider = certificateProvider;
         _ports = ports;
     }
 
@@ -230,11 +233,9 @@ public sealed class TunnelService
                 continue;
             }
 
-            X509Certificate2? certificate = null;
             if (rule.TlsMode == RuleTlsMode.Terminate)
             {
-                certificate = LoadCertificate(config);
-                if (certificate is null)
+                if (_certificateProvider.TryGetCertificate() is null)
                 {
                     errors.Add(new RuleError { RuleId = rule.Id, Message = "该规则启用了服务端 TLS 终结，但服务端未配置有效证书" });
                     continue;
@@ -245,7 +246,7 @@ public sealed class TunnelService
                 session.ClientName,
                 rule,
                 config.ListenHost,
-                certificate,
+                rule.TlsMode == RuleTlsMode.Terminate,
                 OnAcceptedAsync).ConfigureAwait(false);
 
             if (!ok)
@@ -372,24 +373,6 @@ public sealed class TunnelService
             stats.InboundBytes += inbound;
             stats.OutboundBytes += outbound;
             stats.ConnectionCount += connections;
-        }
-    }
-
-    private X509Certificate2? LoadCertificate(ServerConfig config)
-    {
-        if (string.IsNullOrWhiteSpace(config.CertificatePath) || !File.Exists(config.CertificatePath))
-        {
-            return null;
-        }
-
-        try
-        {
-            return X509CertificateLoader.LoadPkcs12FromFile(config.CertificatePath, config.CertificatePassword);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning("加载证书 {Path} 失败：{Message}", config.CertificatePath, ex.Message);
-            return null;
         }
     }
 

@@ -1,23 +1,39 @@
 @page "/"
 @inject TunnelService Tunnel
 @inject ServerConfigStore ConfigStore
+@inject CertificateManager CertificateManager
+@inject ServerCertificateProvider CertificateProvider
+@inject IMessageService MessageService
 @implements IDisposable
 
 <PageTitle>Seeing.Pxy 服务端</PageTitle>
 
 <Card Title="Seeing.Pxy 服务端控制台">
     <Space>
-        <Text Strong>HTTP 监听：</Text>
-        <Text Code>@($"{ConfigStore.Config.ListenHost}:{ConfigStore.Config.ManagementPort}")</Text>
-        @if (ConfigStore.Config.EnableHttps)
-        {
-            <span style="font-weight:600;">HTTPS 监听：</span>
-            <span style="font-family:monospace;">@($"{ConfigStore.Config.ListenHost}:{ConfigStore.Config.HttpsPort}")</span>
-        }
-        <Text Strong>在线客户端：</Text>
-        <Text>@_clients.Count</Text>
         <Button OnClick="@(() => Refresh())">刷新</Button>
     </Space>
+    <div style="display:flex; flex-wrap:wrap; gap:16px; margin-top:16px; padding-left:4px;">
+        <div style="flex:1 1 260px; min-width:200px;">
+            <Card Size="CardSize.Small">
+                <Statistic Title="HTTP 监听" Value="@($"{ConfigStore.Config.ListenHost}:{ConfigStore.Config.ManagementPort}")" ValueStyle="font-size:16px;" />
+            </Card>
+        </div>
+        <div style="flex:1 1 260px; min-width:200px;">
+            <Card Size="CardSize.Small">
+                <Statistic Title="HTTPS 监听" Value="@(ConfigStore.Config.EnableHttps ? $"{ConfigStore.Config.ListenHost}:{ConfigStore.Config.HttpsPort}" : "已禁用")" ValueStyle="font-size:16px;" />
+            </Card>
+        </div>
+        <div style="flex:1 1 140px; min-width:120px;">
+            <Card Size="CardSize.Small">
+                <Statistic Title="在线客户端" Value="@_clients.Count" ValueStyle="font-size:16px;" />
+            </Card>
+        </div>
+        <div style="flex:1 1 140px; min-width:120px;">
+            <Card Size="CardSize.Small">
+                <Statistic Title="映射规则" Value="@_rules.Count" ValueStyle="font-size:16px;" />
+            </Card>
+        </div>
+    </div>
 </Card>
 
 <br />
@@ -80,6 +96,50 @@
             </Space>
         </Card>
     </TabPane>
+    <TabPane Key="cert" Tab="证书与 HTTPS">
+        <Card Title="HTTPS 监听">
+            <Space>
+                <Text Strong>启用 HTTPS：</Text>
+                <Switch Checked="@_enableHttps" OnChange="@OnHttpsChanged" CheckedChildren="启用" UnCheckedChildren="禁用" />
+                <Text Strong>HTTPS 端口：</Text>
+                <Text Code>@ConfigStore.Config.HttpsPort</Text>
+            </Space>
+            @if (_certificate is not null)
+            {
+                <div style="margin-top:12px;">
+                    <div><Text Strong>当前证书主题：</Text><Text Code>@_certificate.Subject</Text></div>
+                    <div><Text Strong>颁发者：</Text><Text>@_certificate.Issuer</Text></div>
+                    <div><Text Strong>生效时间：</Text><Text>@_certificate.NotBefore.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")</Text></div>
+                    <div><Text Strong>过期时间：</Text><Text>@_certificate.NotAfter.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")</Text></div>
+                    <div><Text Strong>指纹：</Text><Text Code>@_certificate.Thumbprint</Text></div>
+                </div>
+            }
+            else
+            {
+                <div style="margin-top:12px;">
+                    <Tag Color="@("orange")">未安装有效证书</Tag>
+                    <Text>HTTPS 当前使用临时自签名证书，浏览器会提示不受信任。</Text>
+                </div>
+            }
+        </Card>
+        <Card Title="上传证书（PFX / PKCS#12）" Style="margin-top:12px;">
+            <Space>
+                <Upload ShowUploadList="false">
+                    <label class="ant-btn" for="certFileInput">选择证书文件</label>
+                </Upload>
+                <InputFile id="certFileInput" OnChange="OnCertFileSelected" accept=".pfx,.p12" hidden />
+                <InputPassword @bind-Value="_certPassword" Placeholder="证书密码" Style="width:220px;" />
+                <Button Type="ButtonType.Primary" Loading="@_uploading" OnClick="UploadCertificate">上传并应用</Button>
+            </Space>
+            @if (_certFileName is not null)
+            {
+                <div style="margin-top:8px;">
+                    <Text Strong>已选择：</Text>
+                    <Text Code>@_certFileName</Text>
+                </div>
+            }
+        </Card>
+    </TabPane>
 </Tabs>
 
 @code {
@@ -87,17 +147,26 @@
     private List<RuleStatus> _rules = new();
     private List<string> _tokens = new();
     private string _newToken = string.Empty;
+    private bool _enableHttps;
+    private string _certPassword = string.Empty;
+    private string? _certFileName;
+    private IBrowserFile? _certFile;
+    private bool _uploading;
+    private X509Certificate2? _certificate;
     private System.Threading.Timer? _timer;
 
     protected override void OnInitialized()
     {
         Refresh();
+        RefreshCertificate();
         _tokens = ConfigStore.Config.Tokens.ToList();
+        _enableHttps = ConfigStore.Config.EnableHttps;
         _timer = new System.Threading.Timer(_ =>
         {
             _ = InvokeAsync(() =>
             {
                 Refresh();
+                RefreshCertificate();
                 StateHasChanged();
             });
         }, null, TimeSpan.FromSeconds(3), TimeSpan.FromSeconds(3));
@@ -107,6 +176,11 @@
     {
         _clients = Tunnel.GetClients().ToList();
         _rules = Tunnel.GetRuleStatuses().ToList();
+    }
+
+    private void RefreshCertificate()
+    {
+        _certificate = CertificateProvider.TryGetCertificate();
     }
 
     private void AddToken()
@@ -138,6 +212,67 @@
         var config = ConfigStore.Config;
         config.Tokens = _tokens.Where(t => !string.IsNullOrWhiteSpace(t)).Select(t => t.Trim()).ToList();
         ConfigStore.Save(config);
+    }
+
+    private async Task OnHttpsChanged(bool value)
+    {
+        _enableHttps = value;
+        var config = ConfigStore.Config;
+        config.EnableHttps = value;
+        try
+        {
+            ConfigStore.Save(config);
+            RefreshCertificate();
+            MessageService.Success(value ? "HTTPS 已启用，立即生效" : "HTTPS 已禁用");
+        }
+        catch (Exception ex)
+        {
+            _enableHttps = !value;
+            config.EnableHttps = !value;
+            MessageService.Error($"保存配置失败：{ex.Message}");
+        }
+    }
+
+    private void OnCertFileSelected(InputFileChangeEventArgs e)
+    {
+        _certFile = e.File;
+        _certFileName = e.File.Name;
+    }
+
+    private async Task UploadCertificate()
+    {
+        if (_certFile is null)
+        {
+            MessageService.Warning("请先选择 PFX 或 PKCS#12 证书文件");
+            return;
+        }
+
+        _uploading = true;
+        try
+        {
+            await using var stream = _certFile.OpenReadStream(maxAllowedSize: 20 * 1024 * 1024);
+            var result = await CertificateManager.InstallAsync(stream, _certFile.Name, _certPassword);
+            if (result.Success)
+            {
+                RefreshCertificate();
+                _certFile = null;
+                _certFileName = null;
+                _certPassword = string.Empty;
+                MessageService.Success($"证书已安装并立即生效：{result.Subject}（有效期至 {result.NotAfter.ToLocalTime():yyyy-MM-dd HH:mm:ss}）");
+            }
+            else
+            {
+                MessageService.Error(result.Error ?? "证书安装失败");
+            }
+        }
+        catch (Exception ex)
+        {
+            MessageService.Error($"证书安装失败：{ex.Message}");
+        }
+        finally
+        {
+            _uploading = false;
+        }
     }
 
     private static string FormatBytes(long bytes)

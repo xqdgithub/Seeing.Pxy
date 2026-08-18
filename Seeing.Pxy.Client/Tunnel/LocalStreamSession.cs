@@ -7,6 +7,8 @@ public sealed class LocalStreamSession
 {
     public string StreamId { get; init; } = string.Empty;
 
+    public string RuleId { get; init; } = string.Empty;
+
     public TcpClient TcpClient { get; init; } = null!;
 
     public NetworkStream Stream { get; init; } = null!;

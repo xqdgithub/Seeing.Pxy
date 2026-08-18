@@ -8,7 +8,8 @@
       "RemotePort": 6101,
       "LocalHost": "127.0.0.1",
       "LocalPort": 7010,
-      "Enabled": true
+      "Enabled": true,
+      "TlsMode": 0
     }
   ]
 }

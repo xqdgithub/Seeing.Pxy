@@ -10,10 +10,39 @@ public sealed class ServerConfigStore
 
     public ServerConfig Config { get; private set; } = new();
 
+    public string ConfigPath => _path;
+
     public ServerConfigStore(IWebHostEnvironment env)
     {
-        _path = Path.Combine(env.ContentRootPath, "server.json");
+        _path = GetUserConfigPath();
+        MigrateLegacyConfig(env);
         Load();
+    }
+
+    public ServerConfigStore(string dataDirectory)
+    {
+        _path = Path.Combine(dataDirectory, "server.json");
+        Load();
+    }
+
+    private void MigrateLegacyConfig(IWebHostEnvironment env)
+    {
+        var legacyPath = Path.Combine(env.ContentRootPath, "server.json");
+        if (!File.Exists(legacyPath) || File.Exists(_path))
+        {
+            return;
+        }
+
+        try
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(_path)!);
+            File.Copy(legacyPath, _path, overwrite: false);
+            Console.WriteLine($"[Seeing.Pxy] 已从旧位置迁移配置：{legacyPath} -> {_path}");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[Seeing.Pxy] 迁移旧配置失败：{ex.Message}");
+        }
     }
 
     public void Load()
@@ -21,6 +50,7 @@ public sealed class ServerConfigStore
         if (!File.Exists(_path))
         {
             Config = new ServerConfig();
+            Config.CertificatePath = Path.Combine(Path.GetDirectoryName(_path)!, "https.pfx");
             Save();
             return;
         }
@@ -34,6 +64,11 @@ public sealed class ServerConfigStore
         {
             Config = new ServerConfig();
         }
+
+        if (string.IsNullOrWhiteSpace(Config.CertificatePath))
+        {
+            Config.CertificatePath = Path.Combine(Path.GetDirectoryName(_path)!, "https.pfx");
+        }
     }
 
     public void Save(ServerConfig? config = null)
@@ -43,6 +78,15 @@ public sealed class ServerConfigStore
             Config = config;
         }
 
-        File.WriteAllText(_path, JsonSerializer.Serialize(Config, _json));
+        Directory.CreateDirectory(Path.GetDirectoryName(_path)!);
+        var temporaryPath = _path + ".tmp";
+        File.WriteAllText(temporaryPath, JsonSerializer.Serialize(Config, _json));
+        File.Move(temporaryPath, _path, overwrite: true);
+    }
+
+    private static string GetUserConfigPath()
+    {
+        var userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        return Path.Combine(userProfile, ".seeing", "pxy", "server.json");
     }
 }

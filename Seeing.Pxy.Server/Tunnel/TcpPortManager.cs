@@ -3,7 +3,7 @@ using System.Net;
 using System.Net.Security;
 using System.Net.Sockets;
 using System.Security.Authentication;
-using System.Security.Cryptography.X509Certificates;
+using Seeing.Pxy.Server.Security;
 using Seeing.Pxy.Shared;
 
 namespace Seeing.Pxy.Server.Tunnel;
@@ -11,18 +11,20 @@ namespace Seeing.Pxy.Server.Tunnel;
 public sealed class TcpPortManager
 {
     private readonly ILogger<TcpPortManager> _logger;
+    private readonly ServerCertificateProvider _certificateProvider;
     private readonly ConcurrentDictionary<int, PortBinding> _bindings = new();
 
-    public TcpPortManager(ILogger<TcpPortManager> logger)
+    public TcpPortManager(ILogger<TcpPortManager> logger, ServerCertificateProvider certificateProvider)
     {
         _logger = logger;
+        _certificateProvider = certificateProvider;
     }
 
     public async Task<(bool Ok, string? Error)> TryBindAsync(
         string clientName,
         ForwardRule rule,
         string listenHost,
-        X509Certificate2? certificate,
+        bool tlsTerminate,
         Func<PortBinding, Socket, Stream, Task> onAccepted)
     {
         if (_bindings.TryGetValue(rule.RemotePort, out var existing))
@@ -49,7 +51,7 @@ public sealed class TcpPortManager
             RuleId = rule.Id,
             Listener = listener,
             Cts = new CancellationTokenSource(),
-            Certificate = certificate,
+            TlsTerminate = tlsTerminate,
         };
 
         if (!_bindings.TryAdd(rule.RemotePort, binding))
@@ -128,12 +130,20 @@ public sealed class TcpPortManager
                 {
                     stream = new NetworkStream(client, ownsSocket: true);
 
-                    if (binding.Certificate is not null)
+                    if (binding.TlsTerminate)
                     {
+                        var certificate = _certificateProvider.TryGetCertificate();
+                        if (certificate is null)
+                        {
+                            _logger.LogWarning("端口 {Port} 需要 TLS 终结，但服务端未配置有效证书，拒绝来自 {Remote} 的连接", binding.Port, client.RemoteEndPoint);
+                            stream.Dispose();
+                            return;
+                        }
+
                         var ssl = new SslStream(stream, leaveInnerStreamOpen: false);
                         await ssl.AuthenticateAsServerAsync(new SslServerAuthenticationOptions
                         {
-                            ServerCertificate = binding.Certificate,
+                            ServerCertificate = certificate,
                             EnabledSslProtocols = SslProtocols.Tls12 | SslProtocols.Tls13,
                         }, binding.Cts.Token).ConfigureAwait(false);
                         stream = ssl;
@@ -185,7 +195,7 @@ public sealed class PortBinding
 
     public CancellationTokenSource Cts { get; init; } = null!;
 
-    public X509Certificate2? Certificate { get; init; }
+    public bool TlsTerminate { get; init; }
 
     public Task AcceptLoop { get; set; } = Task.CompletedTask;
 }

@@ -8,74 +8,146 @@
 <Card Title="连接状态">
     <Space>
         <Tag Color="@StatusColor">@StatusText</Tag>
-        <Text Strong>活动转发：</Text>
-        <Text>@Tunnel.ActiveStreams</Text>
         <Button OnClick="@(() => Reconnect())">重新连接</Button>
         <Button OnClick="@(() => Refresh())">刷新</Button>
     </Space>
+    <div style="display:flex; flex-wrap:wrap; gap:16px; margin-top:16px; padding-left:4px;">
+        <div style="flex:1 1 300px; min-width:220px;">
+            <Card Size="CardSize.Small">
+                <Statistic Title="服务端地址" Value="@ConfigStore.Config.ServerUrl" ValueStyle="font-size:16px; word-break:break-all;" />
+            </Card>
+        </div>
+        <div style="flex:1 1 200px; min-width:160px;">
+            <Card Size="CardSize.Small">
+                <Statistic Title="客户端名称" Value="@ConfigStore.Config.ClientName" ValueStyle="font-size:16px;" />
+            </Card>
+        </div>
+        <div style="flex:1 1 120px; min-width:110px;">
+            <Card Size="CardSize.Small">
+                <Statistic Title="活动连接" Value="@Tunnel.ActiveStreams" ValueStyle="font-size:16px;" />
+            </Card>
+        </div>
+    </div>
     @if (!string.IsNullOrEmpty(Tunnel.LastError))
     {
-        <div style="color:red; margin-top:8px;">@Tunnel.LastError</div>
+        <Alert Type="@AlertType.Error" Message="最近一次错误" Description="@Tunnel.LastError" Style="margin-top:16px;" />
     }
 </Card>
 
 <br />
 
-<Card Title="服务端配置">
-    <Space>
-        <Text Strong>服务端地址：</Text>
-        <Input @bind-Value="_config.ServerUrl" Style="width:360px;" Placeholder="http://公网服务器:5000" />
-    </Space>
-    <br />
-    <br />
-    <Space>
-        <Text Strong>Token：</Text>
-        <Input @bind-Value="_config.Token" Style="width:360px;" Placeholder="预共享 token" />
-    </Space>
-    <br />
-    <br />
-    <Space>
-        <Text Strong>客户端名称：</Text>
-        <Input @bind-Value="_config.ClientName" Style="width:360px;" Placeholder="唯一客户端名称" />
-    </Space>
-</Card>
-
-<br />
-
-<Card Title="端口映射规则">
-    @foreach (var rule in _config.Rules)
-    {
-        <Space Style="margin-bottom:8px;">
-            <Text>公网端口</Text>
-            <AntDesign.InputNumber @bind-Value="rule.RemotePort" Style="width:100px;" />
-            <Text>本地地址</Text>
-            <Input @bind-Value="rule.LocalHost" Style="width:160px;" />
-            <Text>本地端口</Text>
-            <AntDesign.InputNumber @bind-Value="rule.LocalPort" Style="width:100px;" />
-            <Text>启用</Text>
-            <Switch @bind-Checked="rule.Enabled" />
-            <Text>TLS</Text>
-            <Select TItem="RuleTlsMode" TItemValue="RuleTlsMode" @bind-Value="rule.TlsMode" Style="width:130px;" Placeholder="TLS 模式">
-                <SelectOption Value="@RuleTlsMode.None">无</SelectOption>
-                <SelectOption Value="@RuleTlsMode.Terminate">服务端终结</SelectOption>
-            </Select>
-            <Button Danger OnClick="@(() => RemoveRule(rule))">删除</Button>
+<Tabs>
+    <TabPane Key="overview" Tab="概览">
+        <Card Title="规则状态">
+            <Table DataSource="@_ruleStates" TItem="RuleStatusView">
+                <Column TData="RuleStatusView" Title="公网端口">
+                    <Text Code>@context.Rule.RemotePort</Text>
+                </Column>
+                <Column TData="RuleStatusView" Title="本地地址">
+                    <Text>@context.Rule.LocalHost:@context.Rule.LocalPort</Text>
+                </Column>
+                <Column TData="RuleStatusView" Title="TLS">
+                    <Text>@(context.Rule.TlsMode == RuleTlsMode.Terminate ? "服务端终结" : "无")</Text>
+                </Column>
+                <Column TData="RuleStatusView" Title="状态">
+                    <Tag Color="@RuleStatusColor(context)">@RuleStatusText(context)</Tag>
+                </Column>
+                <Column TData="RuleStatusView" Title="失败原因">
+                    <Text>@context.Error</Text>
+                </Column>
+                <Column TData="RuleStatusView" Title="活动连接">
+                    <Text>@context.ActiveConnections</Text>
+                </Column>
+            </Table>
+        </Card>
+    </TabPane>
+    <TabPane Key="rules" Tab="规则管理">
+        @foreach (var rule in _config.Rules)
+        {
+            var index = _config.Rules.IndexOf(rule);
+            <Card Style="margin-bottom:12px;">
+                <Space Style="display:flex; justify-content:space-between; width:100%;">
+                    <Space>
+                        <Text Strong>规则 #@(index + 1)</Text>
+                        <span style="color:#999;">@(rule.RemotePort) → @(rule.LocalHost):@(rule.LocalPort)</span>
+                    </Space>
+                    <Space>
+                        <span style="color:#999;">启用</span>
+                        <Switch @bind-Checked="rule.Enabled" />
+                        <Popconfirm Title="确定删除这条规则？" OnConfirm="@(() => RemoveRule(rule))">
+                            <Button Danger>删除</Button>
+                        </Popconfirm>
+                    </Space>
+                </Space>
+                <Divider Style="margin:12px 0;" />
+                <div style="display:flex; flex-wrap:wrap; gap:16px;">
+                    <div style="flex:1 1 180px;">
+                        <div style="margin-bottom:4px; color:#999;">公网端口</div>
+                        <AntDesign.InputNumber @bind-Value="rule.RemotePort" Style="width:100%;" Min="1" Max="65535" />
+                    </div>
+                    <div style="flex:1 1 180px;">
+                        <div style="margin-bottom:4px; color:#999;">本地地址</div>
+                        <Input @bind-Value="rule.LocalHost" Style="width:100%;" Placeholder="127.0.0.1" />
+                    </div>
+                    <div style="flex:1 1 180px;">
+                        <div style="margin-bottom:4px; color:#999;">本地端口</div>
+                        <AntDesign.InputNumber @bind-Value="rule.LocalPort" Style="width:100%;" Min="1" Max="65535" />
+                    </div>
+                    <div style="flex:1 1 180px;">
+                        <div style="margin-bottom:4px; color:#999;">TLS 模式</div>
+                        <Select TItem="RuleTlsMode" TItemValue="RuleTlsMode" @bind-Value="rule.TlsMode" Style="width:100%;">
+                            <SelectOption Value="@RuleTlsMode.None">无（明文透传）</SelectOption>
+                            <SelectOption Value="@RuleTlsMode.Terminate">服务端终结</SelectOption>
+                        </Select>
+                    </div>
+                </div>
+            </Card>
+        }
+        <Space>
+            <Button OnClick="@AddRule">添加规则</Button>
+            <Button Type="ButtonType.Primary" OnClick="@SaveRules">保存并应用</Button>
         </Space>
-    }
-    <Space Style="margin-top:12px;">
-        <Button OnClick="@(() => AddRule())">添加规则</Button>
-        <Button Type="ButtonType.Primary" OnClick="@(() => Save())">保存并应用</Button>
-    </Space>
-</Card>
+    </TabPane>
+    <TabPane Key="settings" Tab="服务端设置">
+        <Card Title="连接配置">
+            @if (_settingsDirty)
+            {
+                <Alert Type="@AlertType.Warning" Message="有未保存的更改" Style="margin-bottom:12px;" />
+            }
+            <div style="max-width:520px;">
+                <div style="margin-bottom:4px; color:#999;">服务端地址</div>
+                <Input Value="@_serverUrl" BindOnInput="true" ValueChanged="@((string v) => { _serverUrl = v; _settingsDirty = true; })" Placeholder="http://公网服务器:6001" Style="margin-bottom:12px;" />
+                <div style="margin-bottom:4px; color:#999;">Token（预共享密钥）</div>
+                <InputPassword Value="@_token" BindOnInput="true" ValueChanged="@((string v) => { _token = v; _settingsDirty = true; })" Placeholder="预共享 token" Style="margin-bottom:12px;" />
+                <div style="margin-bottom:4px; color:#999;">客户端名称（全局唯一）</div>
+                <Input Value="@_clientName" BindOnInput="true" ValueChanged="@((string v) => { _clientName = v; _settingsDirty = true; })" Placeholder="唯一客户端名称" Style="margin-bottom:12px;" />
+                <Button Type="ButtonType.Primary" OnClick="@(() => SaveSettings())">保存并重连</Button>
+            </div>
+        </Card>
+    </TabPane>
+</Tabs>
 
 @code {
     private ClientConfig _config = new();
+    private List<RuleStatusView> _ruleStates = new();
+    private string _serverUrl = string.Empty;
+    private string _token = string.Empty;
+    private string _clientName = string.Empty;
+    private bool _settingsDirty;
     private System.Threading.Timer? _timer;
 
     protected override void OnInitialized()
     {
         _config = ConfigStore.Config;
-        _timer = new System.Threading.Timer(_ => _ = InvokeAsync(StateHasChanged), null, TimeSpan.FromSeconds(3), TimeSpan.FromSeconds(3));
+        _serverUrl = _config.ServerUrl;
+        _token = _config.Token;
+        _clientName = _config.ClientName;
+        Refresh();
+        _timer = new System.Threading.Timer(_ => _ = InvokeAsync(() =>
+        {
+            Refresh();
+            StateHasChanged();
+        }), null, TimeSpan.FromSeconds(3), TimeSpan.FromSeconds(3));
     }
 
     private string StatusText => Tunnel.Status switch
@@ -92,19 +164,40 @@
         _ => "red",
     };
 
+    private static string RuleStatusText(RuleStatusView view) => view.Rule.Enabled
+        ? (view.Error is null ? "正常" : "失败")
+        : "已停用";
+
+    private static string RuleStatusColor(RuleStatusView view) => !view.Rule.Enabled
+        ? "default"
+        : (view.Error is null ? "green" : "red");
+
+    private void Refresh()
+    {
+        _ruleStates = Tunnel.GetRuleStates().ToList();
+    }
+
     private void AddRule() => _config.Rules.Add(new ForwardRule());
 
     private void RemoveRule(ForwardRule rule) => _config.Rules.Remove(rule);
 
-    private void Save()
+    private void SaveRules()
     {
         ConfigStore.Save(_config);
         _ = Tunnel.ReconnectAsync();
     }
 
-    private void Reconnect() => _ = Tunnel.ReconnectAsync();
+    private void SaveSettings()
+    {
+        _config.ServerUrl = _serverUrl.Trim();
+        _config.Token = _token.Trim();
+        _config.ClientName = _clientName.Trim();
+        _settingsDirty = false;
+        ConfigStore.Save(_config);
+        _ = Tunnel.ReconnectAsync();
+    }
 
-    private void Refresh() => StateHasChanged();
+    private void Reconnect() => _ = Tunnel.ReconnectAsync();
 
     public void Dispose() => _timer?.Dispose();
 }

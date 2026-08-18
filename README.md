@@ -30,7 +30,7 @@ cd Seeing.Pxy.Server
 dotnet run -c Release
 ```
 
-首次运行会在 `ContentRootPath` 生成 `server.json`，也可直接创建：
+首次运行会在用户目录 `~/.seeing/pxy/` 生成 `server.json`（Windows 为 `%USERPROFILE%\.seeing\pxy\`），也可直接创建：
 
 ```json
 {
@@ -46,8 +46,13 @@ dotnet run -c Release
 }
 ```
 
-- 管理页：`http://服务器IP:6001` 或 `https://服务器IP:6002`（可编辑 token、查看客户端与流量统计）
-- HTTPS 证书：配置 `CertificatePath`/`CertificatePassword` 指向 PFX 证书；未配置时尝试使用 .NET 开发证书，仍不可用则仅监听 HTTP
+- 管理页：`http://服务器IP:6001` 或 `https://服务器IP:6002`（可编辑 token、查看客户端与流量统计、管理证书）
+- HTTPS：端口 6002 常驻监听。默认证书为用户目录下的 `https.pfx`；未安装证书时使用临时自签名证书（浏览器会提示不受信任）
+- 在管理页「证书与 HTTPS」中上传 PFX/PKCS#12 证书、开关 HTTPS，均**即时生效，无需重启**；证书替换后新的握手立即使用新证书
+- 若 6002 端口被占用，启动时自动降级为仅 HTTP（控制台有提示），不会阻断服务；此时可在管理页关闭 HTTPS 后重启恢复
+- 禁用 HTTPS 后访问 6002 会返回「HTTPS 已禁用」提示页；此时客户端请不要用 `https://` 连接 `/tunnel`
+- 首次启动会尝试把旧的 `server.json`（位于程序目录 `ContentRootPath`）迁移到用户目录 `~/.seeing/pxy/`
+- 配置文件中 `CertificatePassword` 为明文存储，请收紧配置文件访问权限（Linux 下建议属主为运行用户并设置 600）
 - 需在防火墙/安全组放行：管理端口（6001、6002）+ 所有映射的公网端口（TCP）
 
 ### 2. 客户端（内网机器）
@@ -92,7 +97,7 @@ dotnet run -c Release
 - `RemotePort`：服务端公网端口，需在 `MinAllowedPort`/`MaxAllowedPort` 范围内且全局唯一。
 - `LocalHost`/`LocalPort`：客户端可达的任意内网地址。
 - `TlsMode`（每条规则独立）：`0`=无（明文透传），`1`=服务端终结 TLS。
-  - 本地目标是明文服务、且公网段需要加密 → 用 `1`（服务端需配置 `CertificatePath`）
+  - 本地目标是明文服务、且公网段需要加密 → 用 `1`（服务端需配置证书；证书热替换后新握手立即生效）
   - 本地目标本身是 HTTPS/TLS 服务 → 用 `0` 透传，TLS 由本地目标终结（需本地证书匹配公网域名）
 
 ## 构建与测试
@@ -105,5 +110,5 @@ dotnet test Seeing.Pxy.Tests
 ## 说明
 
 - 当前仅支持 TCP 转发；UDP、HTTP(S) 域名路由不在范围内。
-- 公网到服务端的传输：管理端口支持 HTTP(6001)/HTTPS(6002)；映射端口可对单条规则启用服务端 TLS 终结（`TlsMode=1`）或透传（`TlsMode=0`）。
+- 公网到服务端的传输：管理端口支持 HTTP(6001)/HTTPS(6002)；映射端口可对单条规则启用服务端 TLS 终结（`TlsMode=1`）或透传（`TlsMode=0`）。管理 HTTPS 端口与规则 TLS 终结共用同一服务端证书，替换后即时生效。
 - 服务端到客户端的 SignalR 通道：客户端用 `https://` 连接服务端即加密。

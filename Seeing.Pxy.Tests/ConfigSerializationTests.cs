@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Seeing.Pxy.Server.Config;
 using Seeing.Pxy.Shared;
 
 namespace Seeing.Pxy.Tests;
@@ -57,5 +58,27 @@ public class ConfigSerializationTests
         Assert.Equal(2, back.Tokens.Count);
         Assert.Equal(10000, back.MinAllowedPort);
         Assert.Equal(20000, back.MaxAllowedPort);
+    }
+
+    [Fact]
+    public void ServerConfigStore_Uses_User_Data_Directory()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "seeing-pxy-tests", Guid.NewGuid().ToString("N"));
+
+        try
+        {
+            var store = new ServerConfigStore(root);
+
+            Assert.Equal(Path.Combine(root, "server.json"), store.ConfigPath);
+            Assert.Equal(Path.Combine(root, "https.pfx"), store.Config.CertificatePath);
+            Assert.True(File.Exists(store.ConfigPath));
+        }
+        finally
+        {
+            if (Directory.Exists(root))
+            {
+                Directory.Delete(root, recursive: true);
+            }
+        }
     }
 }
