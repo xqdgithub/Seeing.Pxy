@@ -1,0 +1,40 @@
+Seeing.Pxy.Shared/Configs.cs
+  s_0470a7a6bf0836::t_57fcbdbe67b5d3 11
+  s_0470a7a6bf0836::t_6b03f87057e11f 9-10,12-16
+Seeing.Pxy.Server/server.json
+  s_0470a7a6bf0836::t_c03f9ff3294f86 5
+  s_0470a7a6bf0836::t_73780d8b909659 4,6-7
+Seeing.Pxy.Client/Program.cs
+  s_0470a7a6bf0836::t_ca048907075aac 10-11
+Seeing.Pxy.Server/Components/Pages/Home.razor
+  s_0470a7a6bf0836::t_825599f235a5ed 14-15
+  s_0470a7a6bf0836::t_be048fadac8ce3 10,12-13,16
+Seeing.Pxy.Server/Program.cs
+  s_0470a7a6bf0836::t_f505f9dc972f69 1-3,7,17-44,68-94
+README.md
+  s_0470a7a6bf0836::t_8233868920b4dc 84
+  s_0470a7a6bf0836::t_fa76979d9b7116 39,41-42,50
+Seeing.Pxy.Client/Tunnel/TunnelClientService.cs
+  s_0470a7a6bf0836::t_945d048048b053 141-144,148-154
+  s_0470a7a6bf0836::t_af7c2b771f567c 194
+  s_0470a7a6bf0836::t_0e7bed5d8afcb2 318
+  s_0470a7a6bf0836::t_0198d2e3fedf43 100-106,108,116,120,125
+  s_0470a7a6bf0836::t_517d1bec5c955c 45-57,64-71
+  s_0470a7a6bf0836::t_c5e41ec5205018 58-63
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.40-trip",
+  "base_commit_sha": "e47efef7549e94635a24635009a69500fdd57d80",
+  "prompts": {},
+  "sessions": {
+    "s_0470a7a6bf0836": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_febd93a7dffel552mup7JRMYYy",
+        "model": "DeepSeek-V4-Flash-0731"
+      },
+      "human_author": "qd.xu <qd.xu@trip.com>"
+    }
+  }
+}
