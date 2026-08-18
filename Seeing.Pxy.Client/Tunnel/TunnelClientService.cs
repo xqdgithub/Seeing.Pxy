@@ -232,7 +232,7 @@ public sealed class TunnelClientService : BackgroundService
         };
 
         _streams[streamId] = session;
-        _logger.LogDebug("转发建立 {StreamId} -> {Host}:{Port}，当前活动转发 {Count}", streamId, localHost, localPort, _streams.Count);
+        _logger.LogInformation("建立本地转发 {StreamId} -> {Host}:{Port}，当前活动转发 {Count}", streamId, localHost, localPort, _streams.Count);
         _ = Task.Run(() => PumpLocalAsync(session, connection));
         _ = Task.Run(() => PumpToServerAsync(session, connection));
     }
@@ -315,7 +315,7 @@ public sealed class TunnelClientService : BackgroundService
         session.Cts.Cancel();
         session.Buffer.Writer.TryComplete();
         session.TcpClient.Dispose();
-        _logger.LogDebug("转发关闭 {StreamId}，剩余活动转发 {Count}", streamId, _streams.Count);
+        _logger.LogInformation("本地转发 {StreamId} 已关闭，剩余活动转发 {Count}", streamId, _streams.Count);
 
         if (notify && _connection is not null)
         {

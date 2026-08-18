@@ -140,6 +140,15 @@ public sealed class TunnelService
         session.Buffer.Writer.TryComplete();
         session.Socket.Dispose();
 
+        var stats = GetStats(session.ClientName, session.RuleId);
+        _logger.LogInformation(
+            "转发 {StreamId} 关闭（客户端 {Client}），入站 {Inbound} 字节 / 出站 {Outbound} 字节，规则累计连接数 {Connections}",
+            streamId,
+            session.ClientName,
+            stats.InboundBytes,
+            stats.OutboundBytes,
+            stats.ConnectionCount);
+
         if (notifyClient)
         {
             try
@@ -265,6 +274,15 @@ public sealed class TunnelService
 
         _streams[streamId] = stream;
         AddStats(stream, 0, 0, 1);
+
+        _logger.LogInformation(
+            "公网端口 {Port} 收到连接 {Remote}，创建转发 {StreamId} -> {LocalHost}:{LocalPort}（客户端 {Client}）",
+            binding.Port,
+            client.RemoteEndPoint,
+            streamId,
+            stream.LocalHost,
+            stream.LocalPort,
+            binding.ClientName);
 
         _ = Task.Run(() => PumpInboundAsync(stream));
         _ = Task.Run(() => PumpToClientAsync(stream));

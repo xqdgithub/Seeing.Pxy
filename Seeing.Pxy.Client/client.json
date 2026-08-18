@@ -1,6 +1,6 @@
 {
-  "ServerUrl": "https://seeingyou.top.1:6001",
-  "Token": "toekn4156456156156",
+  "ServerUrl": "http://127.0.0.1:6001",
+  "Token": "testtoken",
   "ClientName": "testpc",
   "Rules": [
     {
