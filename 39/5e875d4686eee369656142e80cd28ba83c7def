@@ -1,0 +1,25 @@
+Seeing.Pxy.Server/Tunnel/TunnelService.cs
+  s_0470a7a6bf0836::t_263a42e43edce4 278-286
+  s_0470a7a6bf0836::t_1ef3661d683561 143-151
+Seeing.Pxy.Client/client.json
+  s_0470a7a6bf0836::t_c98a646bc56fbe 2-3
+Seeing.Pxy.Client/Tunnel/TunnelClientService.cs
+  s_0470a7a6bf0836::t_7c871a37fec0a3 318
+  s_0470a7a6bf0836::t_3ccc21cb8da0cc 235
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.40-trip",
+  "base_commit_sha": "395e875d4686eee369656142e80cd28ba83c7def",
+  "prompts": {},
+  "sessions": {
+    "s_0470a7a6bf0836": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_febd93a7dffel552mup7JRMYYy",
+        "model": "DeepSeek-V4-Flash-0731"
+      },
+      "human_author": "qd.xu <qd.xu@trip.com>"
+    }
+  }
+}
