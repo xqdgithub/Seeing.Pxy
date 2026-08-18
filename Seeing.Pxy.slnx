@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="Seeing.Pxy.Client/Seeing.Pxy.Client.csproj" />
+  <Project Path="Seeing.Pxy.Server/Seeing.Pxy.Server.csproj" />
+  <Project Path="Seeing.Pxy.Shared/Seeing.Pxy.Shared.csproj" />
+  <Project Path="Seeing.Pxy.Tests/Seeing.Pxy.Tests.csproj" />
+</Solution>

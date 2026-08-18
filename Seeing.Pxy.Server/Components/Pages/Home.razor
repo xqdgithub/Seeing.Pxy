@@ -1,0 +1,147 @@
+@page "/"
+@inject TunnelService Tunnel
+@inject ServerConfigStore ConfigStore
+@implements IDisposable
+
+<PageTitle>Seeing.Pxy 服务端</PageTitle>
+
+<Card Title="Seeing.Pxy 服务端控制台">
+    <Space>
+        <Text Strong>监听地址：</Text>
+        <Text Code>@($"{ConfigStore.Config.ListenHost}:{ConfigStore.Config.ManagementPort}")</Text>
+        <Text Strong>在线客户端：</Text>
+        <Text>@_clients.Count</Text>
+        <Button OnClick="@(() => Refresh())">刷新</Button>
+    </Space>
+</Card>
+
+<br />
+
+<Tabs>
+    <TabPane Key="clients" Tab="客户端">
+        <Table DataSource="@_clients" TItem="ClientSession">
+            <Column TData="ClientSession" Title="客户端名称">
+                <Text>@context.ClientName</Text>
+            </Column>
+            <Column TData="ClientSession" Title="连接时间">
+                <Text>@context.ConnectedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")</Text>
+            </Column>
+            <Column TData="ClientSession" Title="规则数">
+                <Text>@context.Rules.Count</Text>
+            </Column>
+            <Column TData="ClientSession" Title="状态">
+                <Tag Color="@("green")">在线</Tag>
+            </Column>
+        </Table>
+    </TabPane>
+    <TabPane Key="rules" Tab="映射与流量">
+        <Table DataSource="@_rules" TItem="RuleStatus">
+            <Column TData="RuleStatus" Title="客户端">
+                <Text>@context.ClientName</Text>
+            </Column>
+            <Column TData="RuleStatus" Title="公网端口">
+                <Text Code>@context.Rule.RemotePort</Text>
+            </Column>
+            <Column TData="RuleStatus" Title="本地地址">
+                <Text>@context.Rule.LocalHost:@context.Rule.LocalPort</Text>
+            </Column>
+            <Column TData="RuleStatus" Title="状态">
+                <Tag Color="@(context.Error is null ? "green" : "red")">@(context.Error is null ? "正常" : "失败")</Tag>
+            </Column>
+            <Column TData="RuleStatus" Title="连接数">
+                <Text>@context.Stats.ConnectionCount</Text>
+            </Column>
+            <Column TData="RuleStatus" Title="入站字节">
+                <Text>@FormatBytes(context.Stats.InboundBytes)</Text>
+            </Column>
+            <Column TData="RuleStatus" Title="出站字节">
+                <Text>@FormatBytes(context.Stats.OutboundBytes)</Text>
+            </Column>
+        </Table>
+    </TabPane>
+    <TabPane Key="tokens" Tab="Token 配置">
+        <Card Title="预共享 Token">
+            @foreach (var token in _tokens)
+            {
+                <Space Style="margin-bottom:8px;">
+                    <Input Value="@token" ValueChanged="@((string v) => UpdateToken(token, v))" Style="width:360px;" />
+                    <Button Danger OnClick="@(() => RemoveToken(token))">删除</Button>
+                </Space>
+            }
+            <Space Style="margin-top:12px;">
+                <Input Placeholder="输入新 token" @bind-Value="_newToken" Style="width:360px;" />
+                <Button Type="ButtonType.Primary" OnClick="@AddToken">添加</Button>
+                <Button OnClick="@SaveTokens">保存</Button>
+            </Space>
+        </Card>
+    </TabPane>
+</Tabs>
+
+@code {
+    private List<ClientSession> _clients = new();
+    private List<RuleStatus> _rules = new();
+    private List<string> _tokens = new();
+    private string _newToken = string.Empty;
+    private System.Threading.Timer? _timer;
+
+    protected override void OnInitialized()
+    {
+        Refresh();
+        _tokens = ConfigStore.Config.Tokens.ToList();
+        _timer = new System.Threading.Timer(_ =>
+        {
+            _ = InvokeAsync(() =>
+            {
+                Refresh();
+                StateHasChanged();
+            });
+        }, null, TimeSpan.FromSeconds(3), TimeSpan.FromSeconds(3));
+    }
+
+    private void Refresh()
+    {
+        _clients = Tunnel.GetClients().ToList();
+        _rules = Tunnel.GetRuleStatuses().ToList();
+    }
+
+    private void AddToken()
+    {
+        var token = _newToken.Trim();
+        if (!string.IsNullOrEmpty(token) && !_tokens.Contains(token))
+        {
+            _tokens.Add(token);
+            _newToken = string.Empty;
+        }
+    }
+
+    private void UpdateToken(string old, string value)
+    {
+        var index = _tokens.IndexOf(old);
+        if (index >= 0)
+        {
+            _tokens[index] = value;
+        }
+    }
+
+    private void RemoveToken(string token)
+    {
+        _tokens.Remove(token);
+    }
+
+    private void SaveTokens()
+    {
+        var config = ConfigStore.Config;
+        config.Tokens = _tokens.Where(t => !string.IsNullOrWhiteSpace(t)).Select(t => t.Trim()).ToList();
+        ConfigStore.Save(config);
+    }
+
+    private static string FormatBytes(long bytes)
+    {
+        if (bytes < 1024) return $"{bytes} B";
+        if (bytes < 1024 * 1024) return $"{bytes / 1024.0:F1} KB";
+        if (bytes < 1024L * 1024 * 1024) return $"{bytes / 1024.0 / 1024.0:F1} MB";
+        return $"{bytes / 1024.0 / 1024.0 / 1024.0:F1} GB";
+    }
+
+    public void Dispose() => _timer?.Dispose();
+}

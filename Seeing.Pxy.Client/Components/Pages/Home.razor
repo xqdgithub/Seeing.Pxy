@@ -1,0 +1,105 @@
+@page "/"
+@inject ClientConfigStore ConfigStore
+@inject TunnelClientService Tunnel
+@implements IDisposable
+
+<PageTitle>Seeing.Pxy 客户端</PageTitle>
+
+<Card Title="连接状态">
+    <Space>
+        <Tag Color="@StatusColor">@StatusText</Tag>
+        <Text Strong>活动转发：</Text>
+        <Text>@Tunnel.ActiveStreams</Text>
+        <Button OnClick="@(() => Reconnect())">重新连接</Button>
+        <Button OnClick="@(() => Refresh())">刷新</Button>
+    </Space>
+    @if (!string.IsNullOrEmpty(Tunnel.LastError))
+    {
+        <div style="color:red; margin-top:8px;">@Tunnel.LastError</div>
+    }
+</Card>
+
+<br />
+
+<Card Title="服务端配置">
+    <Space>
+        <Text Strong>服务端地址：</Text>
+        <Input @bind-Value="_config.ServerUrl" Style="width:360px;" Placeholder="http://公网服务器:5000" />
+    </Space>
+    <br />
+    <br />
+    <Space>
+        <Text Strong>Token：</Text>
+        <Input @bind-Value="_config.Token" Style="width:360px;" Placeholder="预共享 token" />
+    </Space>
+    <br />
+    <br />
+    <Space>
+        <Text Strong>客户端名称：</Text>
+        <Input @bind-Value="_config.ClientName" Style="width:360px;" Placeholder="唯一客户端名称" />
+    </Space>
+</Card>
+
+<br />
+
+<Card Title="端口映射规则">
+    @foreach (var rule in _config.Rules)
+    {
+        <Space Style="margin-bottom:8px;">
+            <Text>公网端口</Text>
+            <AntDesign.InputNumber @bind-Value="rule.RemotePort" Style="width:100px;" />
+            <Text>本地地址</Text>
+            <Input @bind-Value="rule.LocalHost" Style="width:160px;" />
+            <Text>本地端口</Text>
+            <AntDesign.InputNumber @bind-Value="rule.LocalPort" Style="width:100px;" />
+            <Text>启用</Text>
+            <Switch @bind-Checked="rule.Enabled" />
+            <Button Danger OnClick="@(() => RemoveRule(rule))">删除</Button>
+        </Space>
+    }
+    <Space Style="margin-top:12px;">
+        <Button OnClick="@(() => AddRule())">添加规则</Button>
+        <Button Type="ButtonType.Primary" OnClick="@(() => Save())">保存并应用</Button>
+    </Space>
+</Card>
+
+@code {
+    private ClientConfig _config = new();
+    private System.Threading.Timer? _timer;
+
+    protected override void OnInitialized()
+    {
+        _config = ConfigStore.Config;
+        _timer = new System.Threading.Timer(_ => _ = InvokeAsync(StateHasChanged), null, TimeSpan.FromSeconds(3), TimeSpan.FromSeconds(3));
+    }
+
+    private string StatusText => Tunnel.Status switch
+    {
+        TunnelClientService.ConnectionStatus.Connected => "已连接",
+        TunnelClientService.ConnectionStatus.Connecting => "连接中",
+        _ => "未连接",
+    };
+
+    private string StatusColor => Tunnel.Status switch
+    {
+        TunnelClientService.ConnectionStatus.Connected => "green",
+        TunnelClientService.ConnectionStatus.Connecting => "orange",
+        _ => "red",
+    };
+
+    private void AddRule() => _config.Rules.Add(new ForwardRule());
+
+    private void RemoveRule(ForwardRule rule) => _config.Rules.Remove(rule);
+
+    private void Save()
+    {
+        ConfigStore.Save(_config);
+        _ = Tunnel.ReconnectAsync();
+    }
+
+    private void Reconnect() => _ = Tunnel.ReconnectAsync();
+
+    private void Refresh() => StateHasChanged();
+
+    public void Dispose() => _timer?.Dispose();
+}

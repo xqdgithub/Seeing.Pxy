@@ -1,0 +1,35 @@
+{
+  "ServerUrl": "http://127.0.0.1:15001",
+  "Token": "testtoken",
+  "ClientName": "testpc",
+  "Rules": [
+    {
+      "Id": "rule1",
+      "RemotePort": 15000,
+      "LocalHost": "127.0.0.1",
+      "LocalPort": 9090,
+      "Enabled": true
+    },
+    {
+      "Id": "rule2",
+      "RemotePort": 15002,
+      "LocalHost": "127.0.0.1",
+      "LocalPort": 9091,
+      "Enabled": true
+    },
+    {
+      "Id": "rule3",
+      "RemotePort": 15003,
+      "LocalHost": "127.0.0.1",
+      "LocalPort": 9092,
+      "Enabled": true
+    },
+    {
+      "Id": "rule4",
+      "RemotePort": 15004,
+      "LocalHost": "127.0.0.1",
+      "LocalPort": 9093,
+      "Enabled": true
+    }
+  ]
+}
