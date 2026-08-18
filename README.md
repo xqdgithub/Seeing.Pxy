@@ -69,7 +69,8 @@ dotnet run -c Release
       "RemotePort": 6100,
       "LocalHost": "127.0.0.1",
       "LocalPort": 22,
-      "Enabled": true
+      "Enabled": true,
+      "TlsMode": 0
     }
   ]
 }
@@ -90,6 +91,9 @@ dotnet run -c Release
 - `ClientName`：客户端唯一名称，同一时刻同名客户端只能有一个在线。
 - `RemotePort`：服务端公网端口，需在 `MinAllowedPort`/`MaxAllowedPort` 范围内且全局唯一。
 - `LocalHost`/`LocalPort`：客户端可达的任意内网地址。
+- `TlsMode`（每条规则独立）：`0`=无（明文透传），`1`=服务端终结 TLS。
+  - 本地目标是明文服务、且公网段需要加密 → 用 `1`（服务端需配置 `CertificatePath`）
+  - 本地目标本身是 HTTPS/TLS 服务 → 用 `0` 透传，TLS 由本地目标终结（需本地证书匹配公网域名）
 
 ## 构建与测试
 
@@ -101,4 +105,5 @@ dotnet test Seeing.Pxy.Tests
 ## 说明
 
 - 当前仅支持 TCP 转发；UDP、HTTP(S) 域名路由不在范围内。
-- 数据通道默认不加密，公网部署建议在反向代理层加 TLS。
+- 公网到服务端的传输：管理端口支持 HTTP(6001)/HTTPS(6002)；映射端口可对单条规则启用服务端 TLS 终结（`TlsMode=1`）或透传（`TlsMode=0`）。
+- 服务端到客户端的 SignalR 通道：客户端用 `https://` 连接服务端即加密。

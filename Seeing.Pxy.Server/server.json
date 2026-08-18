@@ -3,8 +3,8 @@
   "ManagementPort": 6001,
   "EnableHttps": true,
   "HttpsPort": 6002,
-  "CertificatePath": "D:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\opencode\\test-cert.pfx",
-  "CertificatePassword": "test1234",
+  "CertificatePath": "",
+  "CertificatePassword": "",
   "Tokens": ["testtoken"],
   "MinAllowedPort": 6100,
   "MaxAllowedPort": 6200

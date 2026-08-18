@@ -1,23 +1,14 @@
 {
-  "ServerUrl": "http://127.0.0.1:6001",
-  "Token": "testtoken",
+  "ServerUrl": "http://seeingyou.top:6001",
+  "Token": "toekn4156456156156",
   "ClientName": "testpc",
   "Rules": [
     {
       "Id": "rule1",
-      "RemotePort": 6100,
+      "RemotePort": 6101,
       "LocalHost": "127.0.0.1",
-      "LocalPort": 9091,
-      "Enabled": true,
-      "TlsMode": 0
-    },
-    {
-      "Id": "rule2",
-      "RemotePort": 6102,
-      "LocalHost": "127.0.0.1",
-      "LocalPort": 9091,
-      "Enabled": true,
-      "TlsMode": 1
+      "LocalPort": 7010,
+      "Enabled": true
     }
   ]
 }
