@@ -1,0 +1,21 @@
+README.md
+  s_0470a7a6bf0836::t_c08f8fe910a15e 94-96
+  s_0470a7a6bf0836::t_5ed58a39ef2363 108-109
+  s_0470a7a6bf0836::t_65412e37a02bf4 72-73
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.40-trip",
+  "base_commit_sha": "83a2b0ec9dbaf972ff01134b93c29d2489c7fd13",
+  "prompts": {},
+  "sessions": {
+    "s_0470a7a6bf0836": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_febd93a7dffel552mup7JRMYYy",
+        "model": "DeepSeek-V4-Flash-0731"
+      },
+      "human_author": "qd.xu <qd.xu@trip.com>"
+    }
+  }
+}
