@@ -6,6 +6,14 @@ public class ServerConfig
 
     public int ManagementPort { get; set; } = 6001;
 
+    public bool EnableHttps { get; set; } = true;
+
+    public int HttpsPort { get; set; } = 6002;
+
+    public string CertificatePath { get; set; } = string.Empty;
+
+    public string CertificatePassword { get; set; } = string.Empty;
+
     public List<string> Tokens { get; set; } = new();
 
     public int MinAllowedPort { get; set; } = 6100;

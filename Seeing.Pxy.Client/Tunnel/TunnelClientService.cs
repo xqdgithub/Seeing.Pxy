@@ -42,8 +42,33 @@ public sealed class TunnelClientService : BackgroundService
     {
         while (!stoppingToken.IsCancellationRequested)
         {
-            await ConnectAndRunAsync(stoppingToken).ConfigureAwait(false);
-            await Task.Delay(TimeSpan.FromSeconds(5), stoppingToken).ConfigureAwait(false);
+            try
+            {
+                await ConnectAndRunAsync(stoppingToken).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+            {
+                break;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning("重连循环异常：{Message}", ex.Message);
+            }
+
+            if (stoppingToken.IsCancellationRequested)
+            {
+                break;
+            }
+
+            _logger.LogInformation("连接未建立，将在 5 秒后重试");
+            try
+            {
+                await Task.Delay(TimeSpan.FromSeconds(5), stoppingToken).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                break;
+            }
         }
     }
 
@@ -72,8 +97,15 @@ public sealed class TunnelClientService : BackgroundService
         connection.On<string, byte[]>(TunnelHubMethods.SendData, OnSendData);
         connection.On<string>(TunnelHubMethods.CloseStream, OnCloseStream);
 
-        connection.Reconnected += async _ =>
+        connection.Reconnecting += ex =>
         {
+            _logger.LogWarning("连接中断，正在自动重连：{Message}", ex?.Message);
+            return Task.CompletedTask;
+        };
+
+        connection.Reconnected += async connectionId =>
+        {
+            _logger.LogInformation("已重新连接到服务端，连接 ID {ConnectionId}", connectionId);
             if (!await RegisterAsync(connection, config).ConfigureAwait(false))
             {
                 await connection.StopAsync().ConfigureAwait(false);
@@ -81,14 +113,16 @@ public sealed class TunnelClientService : BackgroundService
         };
 
         var closed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        connection.Closed += _ =>
+        connection.Closed += ex =>
         {
             Volatile.Write(ref _status, (int)ConnectionStatus.Disconnected);
             _connection = null;
+            _logger.LogWarning("与服务端连接已断开：{Message}", ex?.Message);
             closed.TrySetResult();
             return Task.CompletedTask;
         };
 
+        _logger.LogInformation("正在连接服务端 {Server}", config.ServerUrl);
         Volatile.Write(ref _status, (int)ConnectionStatus.Connecting);
         try
         {
@@ -104,11 +138,20 @@ public sealed class TunnelClientService : BackgroundService
 
             await closed.Task.ConfigureAwait(false);
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
+        catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+        {
+        }
+        catch (Exception ex)
         {
             _lastError = ex.Message;
             _logger.LogWarning("连接服务端失败：{Message}", ex.Message);
-            await connection.DisposeAsync().ConfigureAwait(false);
+            try
+            {
+                await connection.DisposeAsync().ConfigureAwait(false);
+            }
+            catch
+            {
+            }
         }
         finally
         {
@@ -148,6 +191,7 @@ public sealed class TunnelClientService : BackgroundService
         catch (Exception ex)
         {
             _lastError = ex.Message;
+            _logger.LogWarning("注册请求异常：{Message}", ex.Message);
             return false;
         }
     }
@@ -188,6 +232,7 @@ public sealed class TunnelClientService : BackgroundService
         };
 
         _streams[streamId] = session;
+        _logger.LogDebug("转发建立 {StreamId} -> {Host}:{Port}，当前活动转发 {Count}", streamId, localHost, localPort, _streams.Count);
         _ = Task.Run(() => PumpLocalAsync(session, connection));
         _ = Task.Run(() => PumpToServerAsync(session, connection));
     }
@@ -270,6 +315,7 @@ public sealed class TunnelClientService : BackgroundService
         session.Cts.Cancel();
         session.Buffer.Writer.TryComplete();
         session.TcpClient.Dispose();
+        _logger.LogDebug("转发关闭 {StreamId}，剩余活动转发 {Count}", streamId, _streams.Count);
 
         if (notify && _connection is not null)
         {

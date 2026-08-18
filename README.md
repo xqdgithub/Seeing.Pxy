@@ -36,14 +36,19 @@ dotnet run -c Release
 {
   "ListenHost": "0.0.0.0",
   "ManagementPort": 6001,
+  "EnableHttps": true,
+  "HttpsPort": 6002,
+  "CertificatePath": "/etc/ssl/seeingyou.pfx",
+  "CertificatePassword": "your-password",
   "Tokens": ["your-token"],
   "MinAllowedPort": 6100,
   "MaxAllowedPort": 6200
 }
 ```
 
-- 管理页：`http://服务器IP:6001`（可编辑 token、查看客户端与流量统计）
-- 需在防火墙/安全组放行：管理端口 + 所有映射的公网端口（TCP）
+- 管理页：`http://服务器IP:6001` 或 `https://服务器IP:6002`（可编辑 token、查看客户端与流量统计）
+- HTTPS 证书：配置 `CertificatePath`/`CertificatePassword` 指向 PFX 证书；未配置时尝试使用 .NET 开发证书，仍不可用则仅监听 HTTP
+- 需在防火墙/安全组放行：管理端口（6001、6002）+ 所有映射的公网端口（TCP）
 
 ### 2. 客户端（内网机器）
 
@@ -56,7 +61,7 @@ dotnet run -c Release
 
 ```json
 {
-  "ServerUrl": "http://公网服务器:6001",
+  "ServerUrl": "https://公网服务器:6002",
   "Token": "your-token",
   "ClientName": "home-pc",
   "Rules": [
@@ -71,11 +76,12 @@ dotnet run -c Release
 ```
 
 - 客户端管理页：`http://localhost:6001`（编辑规则、服务端地址、token，实时查看连接状态）
+- `ServerUrl` 可用 `http://公网服务器:6001` 或 `https://公网服务器:6002`（需服务端已启用 HTTPS）
 
 ### 3. 验证
 
 ```
-外部机器: telnet 公网服务器 7000   →  转发到内网 127.0.0.1:22
+外部机器: telnet 公网服务器 6100   →  转发到内网 127.0.0.1:22
 ```
 
 ## 配置说明

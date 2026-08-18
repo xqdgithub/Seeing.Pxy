@@ -1,6 +1,10 @@
 {
   "ListenHost": "0.0.0.0",
   "ManagementPort": 6001,
+  "EnableHttps": true,
+  "HttpsPort": 6002,
+  "CertificatePath": "",
+  "CertificatePassword": "",
   "Tokens": ["testtoken"],
   "MinAllowedPort": 6100,
   "MaxAllowedPort": 6200

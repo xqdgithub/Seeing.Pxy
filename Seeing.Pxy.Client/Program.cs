@@ -7,7 +7,8 @@ var builder = WebApplication.CreateBuilder(args);
 var configStore = new ClientConfigStore(builder.Environment);
 
 builder.Services.AddSingleton(configStore);
-builder.Services.AddHostedService<TunnelClientService>();
+builder.Services.AddSingleton<TunnelClientService>();
+builder.Services.AddHostedService(sp => sp.GetRequiredService<TunnelClientService>());
 
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();

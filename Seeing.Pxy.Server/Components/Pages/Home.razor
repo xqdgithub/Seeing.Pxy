@@ -7,8 +7,13 @@
 
 <Card Title="Seeing.Pxy 服务端控制台">
     <Space>
-        <Text Strong>监听地址：</Text>
+        <Text Strong>HTTP 监听：</Text>
         <Text Code>@($"{ConfigStore.Config.ListenHost}:{ConfigStore.Config.ManagementPort}")</Text>
+        @if (ConfigStore.Config.EnableHttps)
+        {
+            <span style="font-weight:600;">HTTPS 监听：</span>
+            <span style="font-family:monospace;">@($"{ConfigStore.Config.ListenHost}:{ConfigStore.Config.HttpsPort}")</span>
+        }
         <Text Strong>在线客户端：</Text>
         <Text>@_clients.Count</Text>
         <Button OnClick="@(() => Refresh())">刷新</Button>
