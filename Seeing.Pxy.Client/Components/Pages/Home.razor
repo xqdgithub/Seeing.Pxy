@@ -54,6 +54,11 @@
             <AntDesign.InputNumber @bind-Value="rule.LocalPort" Style="width:100px;" />
             <Text>启用</Text>
             <Switch @bind-Checked="rule.Enabled" />
+            <Text>TLS</Text>
+            <Select TItem="RuleTlsMode" TItemValue="RuleTlsMode" @bind-Value="rule.TlsMode" Style="width:130px;" Placeholder="TLS 模式">
+                <SelectOption Value="@RuleTlsMode.None">无</SelectOption>
+                <SelectOption Value="@RuleTlsMode.Terminate">服务端终结</SelectOption>
+            </Select>
             <Button Danger OnClick="@(() => RemoveRule(rule))">删除</Button>
         </Space>
     }

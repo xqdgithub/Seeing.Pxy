@@ -1,6 +1,9 @@
 using System.Collections.Concurrent;
 using System.Net;
+using System.Net.Security;
 using System.Net.Sockets;
+using System.Security.Authentication;
+using System.Security.Cryptography.X509Certificates;
 using Seeing.Pxy.Shared;
 
 namespace Seeing.Pxy.Server.Tunnel;
@@ -19,7 +22,8 @@ public sealed class TcpPortManager
         string clientName,
         ForwardRule rule,
         string listenHost,
-        Func<PortBinding, Socket, Task> onAccepted)
+        X509Certificate2? certificate,
+        Func<PortBinding, Socket, Stream, Task> onAccepted)
     {
         if (_bindings.TryGetValue(rule.RemotePort, out var existing))
         {
@@ -45,6 +49,7 @@ public sealed class TcpPortManager
             RuleId = rule.Id,
             Listener = listener,
             Cts = new CancellationTokenSource(),
+            Certificate = certificate,
         };
 
         if (!_bindings.TryAdd(rule.RemotePort, binding))
@@ -93,7 +98,7 @@ public sealed class TcpPortManager
         }
     }
 
-    private async Task AcceptLoopAsync(PortBinding binding, Func<PortBinding, Socket, Task> onAccepted)
+    private async Task AcceptLoopAsync(PortBinding binding, Func<PortBinding, Socket, Stream, Task> onAccepted)
     {
         while (!binding.Cts.IsCancellationRequested)
         {
@@ -118,14 +123,38 @@ public sealed class TcpPortManager
 
             _ = Task.Run(async () =>
             {
+                Stream? stream = null;
                 try
                 {
-                    await onAccepted(binding, client).ConfigureAwait(false);
+                    stream = new NetworkStream(client, ownsSocket: true);
+
+                    if (binding.Certificate is not null)
+                    {
+                        var ssl = new SslStream(stream, leaveInnerStreamOpen: false);
+                        await ssl.AuthenticateAsServerAsync(new SslServerAuthenticationOptions
+                        {
+                            ServerCertificate = binding.Certificate,
+                            EnabledSslProtocols = SslProtocols.Tls12 | SslProtocols.Tls13,
+                        }, binding.Cts.Token).ConfigureAwait(false);
+                        stream = ssl;
+                        _logger.LogInformation("端口 {Port} TLS 握手完成，来源 {Remote}", binding.Port, client.RemoteEndPoint);
+                    }
+
+                    await onAccepted(binding, client, stream).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException)
+                {
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "处理端口 {Port} 的连接失败", binding.Port);
-                    client.Dispose();
+                    _logger.LogWarning(ex, "端口 {Port} 处理连接失败（{Remote}）", binding.Port, client.RemoteEndPoint);
+                    try
+                    {
+                        stream?.Dispose();
+                    }
+                    catch
+                    {
+                    }
                 }
             });
         }
@@ -155,6 +184,8 @@ public sealed class PortBinding
     public TcpListener Listener { get; init; } = null!;
 
     public CancellationTokenSource Cts { get; init; } = null!;
+
+    public X509Certificate2? Certificate { get; init; }
 
     public Task AcceptLoop { get; set; } = Task.CompletedTask;
 }

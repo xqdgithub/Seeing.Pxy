@@ -8,7 +8,16 @@
       "RemotePort": 6100,
       "LocalHost": "127.0.0.1",
       "LocalPort": 9091,
-      "Enabled": true
+      "Enabled": true,
+      "TlsMode": 0
+    },
+    {
+      "Id": "rule2",
+      "RemotePort": 6102,
+      "LocalHost": "127.0.0.1",
+      "LocalPort": 9091,
+      "Enabled": true,
+      "TlsMode": 1
     }
   ]
 }

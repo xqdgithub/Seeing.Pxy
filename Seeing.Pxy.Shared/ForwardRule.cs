@@ -1,5 +1,11 @@
 namespace Seeing.Pxy.Shared;
 
+public enum RuleTlsMode
+{
+    None,
+    Terminate,
+}
+
 public class ForwardRule
 {
     public string Id { get; set; } = Guid.NewGuid().ToString("N");
@@ -12,6 +18,8 @@ public class ForwardRule
 
     public bool Enabled { get; set; } = true;
 
+    public RuleTlsMode TlsMode { get; set; } = RuleTlsMode.None;
+
     public ForwardRule Clone() => new()
     {
         Id = Id,
@@ -19,5 +27,6 @@ public class ForwardRule
         LocalHost = LocalHost,
         LocalPort = LocalPort,
         Enabled = Enabled,
+        TlsMode = TlsMode,
     };
 }

@@ -24,7 +24,7 @@ public class TcpPortManagerTests
         var port = GetFreePort();
         var rule = new ForwardRule { Id = "r1", RemotePort = port };
 
-        var (ok, error) = await manager.TryBindAsync("c1", rule, "127.0.0.1", (_, _) => Task.CompletedTask);
+        var (ok, error) = await manager.TryBindAsync("c1", rule, "127.0.0.1", null, (_, _, _) => Task.CompletedTask);
 
         Assert.True(ok, error);
         await manager.UnbindClientAsync("c1");
@@ -39,8 +39,8 @@ public class TcpPortManagerTests
         var rule1 = new ForwardRule { Id = "r1", RemotePort = port };
         var rule2 = new ForwardRule { Id = "r2", RemotePort = port };
 
-        var (ok1, _) = await manager.TryBindAsync("c1", rule1, "127.0.0.1", (_, _) => Task.CompletedTask);
-        var (ok2, error2) = await manager.TryBindAsync("c2", rule2, "127.0.0.1", (_, _) => Task.CompletedTask);
+        var (ok1, _) = await manager.TryBindAsync("c1", rule1, "127.0.0.1", null, (_, _, _) => Task.CompletedTask);
+        var (ok2, error2) = await manager.TryBindAsync("c2", rule2, "127.0.0.1", null, (_, _, _) => Task.CompletedTask);
 
         Assert.True(ok1);
         Assert.False(ok2);
@@ -56,11 +56,11 @@ public class TcpPortManagerTests
         var port = GetFreePort();
         var rule = new ForwardRule { Id = "r1", RemotePort = port };
 
-        await manager.TryBindAsync("c1", rule, "127.0.0.1", (_, _) => Task.CompletedTask);
+        await manager.TryBindAsync("c1", rule, "127.0.0.1", null, (_, _, _) => Task.CompletedTask);
         await manager.UnbindClientAsync("c1");
 
         var rule2 = new ForwardRule { Id = "r2", RemotePort = port };
-        var (ok2, error2) = await manager.TryBindAsync("c2", rule2, "127.0.0.1", (_, _) => Task.CompletedTask);
+        var (ok2, error2) = await manager.TryBindAsync("c2", rule2, "127.0.0.1", null, (_, _, _) => Task.CompletedTask);
 
         Assert.True(ok2, error2);
         await manager.UnbindClientAsync("c2");

@@ -19,7 +19,7 @@ public sealed class StreamSession
 
     public Socket Socket { get; init; } = null!;
 
-    public NetworkStream Stream { get; init; } = null!;
+    public Stream Stream { get; init; } = null!;
 
     public Channel<byte[]> Buffer { get; } = Channel.CreateBounded<byte[]>(
         new BoundedChannelOptions(16) { FullMode = BoundedChannelFullMode.Wait });
