@@ -133,6 +133,16 @@ public sealed class TunnelClientService : BackgroundService
                 return false;
             }
 
+            if (result.RuleErrors is { Count: > 0 })
+            {
+                _lastError = string.Join("; ", result.RuleErrors.Select(e => e.Message));
+                _logger.LogWarning("部分规则注册失败：{Error}", _lastError);
+            }
+            else
+            {
+                _lastError = string.Empty;
+            }
+
             return true;
         }
         catch (Exception ex)

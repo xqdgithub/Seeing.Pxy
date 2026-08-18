@@ -79,13 +79,13 @@ public sealed class TunnelService
         }
 
         var errors = await ApplyRulesAsync(session, rules).ConfigureAwait(false);
-        if (errors.Count > 0)
+        if (session.Rules.Count == 0)
         {
             return new RegisterResult { Success = false, RuleErrors = errors };
         }
 
-        _logger.LogInformation("客户端 {Client} 注册成功，规则 {Count} 条", clientName, rules.Count(r => r.Enabled));
-        return new RegisterResult { Success = true };
+        _logger.LogInformation("客户端 {Client} 注册成功，规则 {Count} 条", clientName, session.Rules.Count);
+        return new RegisterResult { Success = true, RuleErrors = errors.Count > 0 ? errors : null };
     }
 
     public async Task<RegisterResult> UpdateRulesAsync(string connectionId, string token, string clientName, List<ForwardRule> rules)
@@ -106,9 +106,9 @@ public sealed class TunnelService
         }
 
         var errors = await ApplyRulesAsync(session, rules).ConfigureAwait(false);
-        return errors.Count > 0
-            ? new RegisterResult { Success = false, RuleErrors = errors }
-            : new RegisterResult { Success = true };
+        return session.Rules.Count > 0
+            ? new RegisterResult { Success = true, RuleErrors = errors.Count > 0 ? errors : null }
+            : new RegisterResult { Success = false, RuleErrors = errors };
     }
 
     public async Task SendDataAsync(string streamId, byte[] data)
@@ -212,10 +212,18 @@ public sealed class TunnelService
 
         foreach (var rule in newRules)
         {
+            var config = _configStore.Config;
+            var validationError = RuleValidator.Validate(rule, config);
+            if (validationError is not null)
+            {
+                errors.Add(new RuleError { RuleId = rule.Id, Message = validationError });
+                continue;
+            }
+
             var (ok, error) = await _ports.TryBindAsync(
                 session.ClientName,
                 rule,
-                _configStore.Config.ListenHost,
+                config.ListenHost,
                 OnAcceptedAsync).ConfigureAwait(false);
 
             if (!ok)

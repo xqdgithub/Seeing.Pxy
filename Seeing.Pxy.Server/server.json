@@ -1,7 +1,7 @@
 {
   "ListenHost": "0.0.0.0",
-  "ManagementPort": 15001,
+  "ManagementPort": 6001,
   "Tokens": ["testtoken"],
-  "MinAllowedPort": 10000,
-  "MaxAllowedPort": 60000
+  "MinAllowedPort": 6100,
+  "MaxAllowedPort": 6200
 }

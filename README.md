@@ -35,14 +35,14 @@ dotnet run -c Release
 ```json
 {
   "ListenHost": "0.0.0.0",
-  "ManagementPort": 5000,
+  "ManagementPort": 6001,
   "Tokens": ["your-token"],
-  "MinAllowedPort": 10000,
-  "MaxAllowedPort": 60000
+  "MinAllowedPort": 6100,
+  "MaxAllowedPort": 6200
 }
 ```
 
-- 管理页：`http://服务器IP:5000`（可编辑 token、查看客户端与流量统计）
+- 管理页：`http://服务器IP:6001`（可编辑 token、查看客户端与流量统计）
 - 需在防火墙/安全组放行：管理端口 + 所有映射的公网端口（TCP）
 
 ### 2. 客户端（内网机器）
@@ -56,12 +56,12 @@ dotnet run -c Release
 
 ```json
 {
-  "ServerUrl": "http://公网服务器:5000",
+  "ServerUrl": "http://公网服务器:6001",
   "Token": "your-token",
   "ClientName": "home-pc",
   "Rules": [
     {
-      "RemotePort": 7000,
+      "RemotePort": 6100,
       "LocalHost": "127.0.0.1",
       "LocalPort": 22,
       "Enabled": true
@@ -70,7 +70,7 @@ dotnet run -c Release
 }
 ```
 
-- 客户端管理页：`http://localhost:5000`（编辑规则、服务端地址、token，实时查看连接状态）
+- 客户端管理页：`http://localhost:6001`（编辑规则、服务端地址、token，实时查看连接状态）
 
 ### 3. 验证
 
