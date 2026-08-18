@@ -1,0 +1,42 @@
+Seeing.Pxy.Client/Components/App.razor
+  s_0470a7a6bf0836::t_0f9d12daee9ed1 17-19
+Seeing.Pxy.Server/Tunnel/TunnelService.cs
+  s_0470a7a6bf0836::t_abca94c74bc3a1 216-217,219
+  s_0470a7a6bf0836::t_f954b27a8cb189 82,87-88
+  s_0470a7a6bf0836::t_214dd6d52c94ee 109-111
+  s_0470a7a6bf0836::t_8116b206ae7b9f 215,218,220-222,226
+Seeing.Pxy.Server/Components/App.razor
+  s_0470a7a6bf0836::t_97853e1ca54b72 17-19
+README.md
+  s_0470a7a6bf0836::t_e2c873c66d79de 73
+  s_0470a7a6bf0836::t_5280018cd52722 59
+  s_0470a7a6bf0836::t_e38fb74bdba9f6 64
+Seeing.Pxy.Server/Tunnel/RuleValidator.cs
+  s_0470a7a6bf0836::t_0f7387edba0bb8 1-31
+Seeing.Pxy.Client/Tunnel/TunnelClientService.cs
+  s_0470a7a6bf0836::t_607ba9cb8d0d03 136-145
+Seeing.Pxy.Shared/Configs.cs
+  s_0470a7a6bf0836::t_729feaaa710611 18
+Seeing.Pxy.Client/client.json
+  s_0470a7a6bf0836::t_535fafd802699b 2,8
+Seeing.Pxy.Tests/RuleValidatorTests.cs
+  s_0470a7a6bf0836::t_3114a7e1b92e3e 1-48
+Seeing.Pxy.Server/server.json
+  s_0470a7a6bf0836::t_92f918e124e30f 3,5-6
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.40-trip",
+  "base_commit_sha": "a20b597d0ba6c705ee710ab0335370137b375b49",
+  "prompts": {},
+  "sessions": {
+    "s_0470a7a6bf0836": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_febd93a7dffel552mup7JRMYYy",
+        "model": "DeepSeek-V4-Flash-0731"
+      },
+      "human_author": "qd.xu <qd.xu@trip.com>"
+    }
+  }
+}
